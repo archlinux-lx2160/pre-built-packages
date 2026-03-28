@@ -14,7 +14,7 @@ runs:
   using: composite
   steps:
     - name: Cache Docker image
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: docker-cache
       with:
         path: /tmp/archlinux-aarch64.tar.zst
