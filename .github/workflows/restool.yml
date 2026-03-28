@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Build and cache Docker image
         uses: ./.github/actions/archlinux-docker
         with:
@@ -65,7 +65,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download all package artifacts
         uses: actions/download-artifact@v4
@@ -106,6 +106,10 @@ jobs:
             git -C deploy remote add origin "$REPO_URL"
           }
           cp -f site/* deploy/
+          cat > deploy/wrangler.toml << 'EOF'
+          name = "lx2160-repo"
+          pages_build_output_dir = "."
+          EOF
           cd deploy
           git add -A
           git -c user.name="github-actions" -c user.email="github-actions@github.com" \
