@@ -112,7 +112,7 @@ jobs:
             output/metadata.tar.gz
 
   deploy-repo:
-    needs: [create-release, build-packages, build-incus-image]
+    needs: [create-release, build-incus-image]  # build-packages
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-24.04-arm
     steps:
