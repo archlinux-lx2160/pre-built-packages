@@ -106,10 +106,6 @@ jobs:
             git -C deploy remote add origin "$REPO_URL"
           }
           cp -f site/* deploy/
-          cat > deploy/wrangler.toml << 'EOF'
-          name = "lx2160-repo"
-          pages_build_output_dir = "."
-          EOF
           cd deploy
           git add -A
           git -c user.name="github-actions" -c user.email="github-actions@github.com" \
