@@ -49,16 +49,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - package_repo: https://github.com/archlinux-lx2160/restool
-            package_name: restool
-          #- package_repo: https://github.com/archlinux-lx2160/linux-aarch64-lx2160
-          #  package_name: linux-aarch64-lx2160
-          - package_repo: https://aur.archlinux.org/zfs-dkms.git
-            package_name: zfs-dkms
-            pgp_keys: "4F3BA9AB6D1F8D683DC2DFB56AD860EED4598027 C33DF142657ED1F7C328A2960AB9E991C6AF658B"
-          - package_repo: https://aur.archlinux.org/zfs-utils.git
-            package_name: zfs-utils
-            pgp_keys: "4F3BA9AB6D1F8D683DC2DFB56AD860EED4598027 C33DF142657ED1F7C328A2960AB9E991C6AF658B"
+#          - package_repo: https://github.com/archlinux-lx2160/restool
+#            package_name: restool
+#          #- package_repo: https://github.com/archlinux-lx2160/linux-aarch64-lx2160
+#          #  package_name: linux-aarch64-lx2160
+#          - package_repo: https://aur.archlinux.org/zfs-dkms.git
+#            package_name: zfs-dkms
+#            pgp_keys: "4F3BA9AB6D1F8D683DC2DFB56AD860EED4598027 C33DF142657ED1F7C328A2960AB9E991C6AF658B"
+#          - package_repo: https://aur.archlinux.org/zfs-utils.git
+#            package_name: zfs-utils
+#            pgp_keys: "4F3BA9AB6D1F8D683DC2DFB56AD860EED4598027 C33DF142657ED1F7C328A2960AB9E991C6AF658B"
     uses: ./.github/workflows/build-package.yml
     with:
       package_repo: ${{ matrix.package_repo }}
@@ -68,8 +68,50 @@ jobs:
     secrets:
       GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
 
+  build-incus-image:
+    needs: [build-image]
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build Arch Linux ARM rootfs
+        uses: ./.github/actions/archlinux-docker
+        with:
+          mount: |
+            ${{ github.workspace }}/output:/output
+          run: |
+            mkdir -p /rootfs
+            pacman -r /rootfs -Sy --noconfirm base openssh
+            # Configure the image
+            echo "archlinux" > /rootfs/etc/hostname
+            ln -sf /usr/share/zoneinfo/UTC /rootfs/etc/localtime
+            systemctl --root=/rootfs enable systemd-networkd systemd-resolved sshd
+            # Create metadata
+            cat > /output/metadata.yaml << 'EOF'
+            architecture: aarch64
+            creation_date: $(date +%s)
+            properties:
+              description: Arch Linux ARM (aarch64)
+              os: archlinux
+              release: rolling
+              variant: default
+            EOF
+            sed -i "s/\$(date +%s)/$(date +%s)/" /output/metadata.yaml
+            # Pack rootfs and metadata
+            tar czf /output/rootfs.tar.gz -C /rootfs .
+            cd /output && tar czf metadata.tar.gz metadata.yaml
+
+      - name: Upload incus image artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: incus-image
+          path: |
+            output/rootfs.tar.gz
+            output/metadata.tar.gz
+
   deploy-repo:
-    needs: [create-release, build-packages]
+    needs: [create-release, build-packages, build-incus-image]
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-24.04-arm
     steps:
@@ -85,6 +127,67 @@ jobs:
         run: |
           mkdir -p site
           find packages -name '*.pkg.tar.*' -exec cp {} site/ \;
+
+      - name: Build Incus simplestreams
+        run: |
+          mkdir -p site/incus/streams/v1 site/incus/images
+          cp packages/incus-image/rootfs.tar.gz site/incus/images/
+          cp packages/incus-image/metadata.tar.gz site/incus/images/
+          ROOTFS_SHA256=$(sha256sum site/incus/images/rootfs.tar.gz | cut -d' ' -f1)
+          ROOTFS_SIZE=$(stat -c%s site/incus/images/rootfs.tar.gz)
+          META_SHA256=$(sha256sum site/incus/images/metadata.tar.gz | cut -d' ' -f1)
+          META_SIZE=$(stat -c%s site/incus/images/metadata.tar.gz)
+          FINGERPRINT=$ROOTFS_SHA256
+          DATE=$(date +%Y%m%d_%H:%M)
+
+          cat > site/incus/streams/v1/index.json << EOF
+          {
+            "index": {
+              "images": {
+                "datatype": "image-downloads",
+                "path": "streams/v1/images.json",
+                "format": "products:1.0",
+                "products": ["archlinux:aarch64:default"]
+              }
+            },
+            "format": "index:1.0"
+          }
+          EOF
+
+          cat > site/incus/streams/v1/images.json << EOF
+          {
+            "content_id": "images",
+            "datatype": "image-downloads",
+            "format": "products:1.0",
+            "products": {
+              "archlinux:aarch64:default": {
+                "aliases": "archlinux/aarch64",
+                "arch": "aarch64",
+                "os": "archlinux",
+                "release": "rolling",
+                "variant": "default",
+                "versions": {
+                  "$DATE": {
+                    "items": {
+                      "root.tar.gz": {
+                        "ftype": "root.tar.gz",
+                        "sha256": "$ROOTFS_SHA256",
+                        "size": $ROOTFS_SIZE,
+                        "path": "images/rootfs.tar.gz"
+                      },
+                      "incus.tar.gz": {
+                        "ftype": "incus.tar.gz",
+                        "sha256": "$META_SHA256",
+                        "size": $META_SIZE,
+                        "path": "images/metadata.tar.gz"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          EOF
 
       - name: Write GPG key
         run: echo "${{ secrets.GPG_PRIVATE_KEY }}" > /tmp/gpg-private.key
@@ -134,6 +237,9 @@ jobs:
           <p>Add to <code>/etc/pacman.conf</code>:</p>
           <pre>[lx2160]
           Server = https://archlinux-lx2160.yxio.net</pre>
+          <h2>Incus Image</h2>
+          <pre>incus remote add archlinux-aarch64 https://archlinux-lx2160.yxio.net/incus --protocol simplestreams
+          incus launch archlinux-aarch64:archlinux/aarch64 mycontainer</pre>
           <h2>Packages</h2><ul>
           HEADER
           KEY_ID=$(gpg --show-keys --with-colons lx2160.gpg | awk -F: '$1=="fpr"{print $10; exit}')
