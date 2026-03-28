@@ -56,6 +56,9 @@ jobs:
           - package_repo: https://aur.archlinux.org/zfs-dkms.git
             package_name: zfs-dkms
             pgp_keys: "4F3BA9AB6D1F8D683DC2DFB56AD860EED4598027 C33DF142657ED1F7C328A2960AB9E991C6AF658B"
+          - package_repo: https://aur.archlinux.org/zfs-utils.git
+            package_name: zfs-utils
+            pgp_keys: "4F3BA9AB6D1F8D683DC2DFB56AD860EED4598027 C33DF142657ED1F7C328A2960AB9E991C6AF658B"
     uses: ./.github/workflows/build-package.yml
     with:
       package_repo: ${{ matrix.package_repo }}
