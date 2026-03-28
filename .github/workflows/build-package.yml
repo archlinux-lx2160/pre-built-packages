@@ -62,7 +62,7 @@ jobs:
             cd /pkg && makepkg -s --noconfirm --sign
 
       - name: Upload package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ inputs.package_name }}
           path: "pkg/*.pkg.tar.*"
