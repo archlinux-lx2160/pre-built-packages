@@ -24,31 +24,24 @@ jobs:
   build:
     runs-on: ubuntu-24.04-arm
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Clone package repo
         run: git clone "${{ inputs.package_repo }}" pkg
 
-      - name: Load Docker image from cache
-        uses: actions/cache/restore@v4
-        with:
-          path: /tmp/archlinux-aarch64.tar.zst
-          key: archlinux-aarch64-v1
-
-      - name: Import Docker image
-        run: zstd -d /tmp/archlinux-aarch64.tar.zst --stdout | docker load
-
       - name: Build package
-        run: |
-          docker run --rm \
-            -v "${{ github.workspace }}/pkg:/pkg" \
-            archlinux-aarch64 \
-            bash -c '
-              git config --file /etc/makepkg.d/gitconfig user.email "till@ehrengruber.ch"
-              git config --file /etc/makepkg.d/gitconfig user.name "Till Ehrengruber"
-              if [ -n "${{ inputs.pgp_keys }}" ]; then
-                gpg --recv-keys ${{ inputs.pgp_keys }}
-              fi
-              cd /pkg && makepkg -s --noconfirm
-            '
+        uses: ./.github/actions/archlinux-docker
+        with:
+          mount: |
+            ${{ github.workspace }}/pkg:/pkg
+          run: |
+            git config --file /etc/makepkg.d/gitconfig user.email "till@ehrengruber.ch"
+            git config --file /etc/makepkg.d/gitconfig user.name "Till Ehrengruber"
+            if [ -n "${{ inputs.pgp_keys }}" ]; then
+              gpg --recv-keys ${{ inputs.pgp_keys }}
+            fi
+            cd /pkg && makepkg -s --noconfirm
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
