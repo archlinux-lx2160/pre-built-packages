@@ -35,8 +35,14 @@ jobs:
         run: git clone "${{ inputs.package_repo }}" pkg
 
       - name: Write GPG key
-        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
-        run: echo "${{ secrets.GPG_PRIVATE_KEY }}" > /tmp/gpg-private.key
+        run: |
+          if [ -n "$GPG_KEY" ]; then
+            echo "$GPG_KEY" > /tmp/gpg-private.key
+          else
+            touch /tmp/gpg-private.key
+          fi
+        env:
+          GPG_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
 
       - name: Build package
         uses: ./.github/actions/archlinux-docker
