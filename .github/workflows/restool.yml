@@ -91,7 +91,7 @@ jobs:
           run: |
             gpg --batch --import /tmp/gpg-private.key
             gpg --export --armor > /site/lx2160.gpg
-            cd /site && repo-add --sign lx2160.db.tar.gz *.pkg.tar.!(sig)
+            cd /site && repo-add --sign lx2160.db.tar.gz *.pkg.tar.xz *.pkg.tar.zst
 
       - name: Generate redirects and clean up
         env:
