@@ -48,7 +48,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
+        include: []
 #          - package_repo: https://github.com/archlinux-lx2160/restool
 #            package_name: restool
 #          #- package_repo: https://github.com/archlinux-lx2160/linux-aarch64-lx2160
