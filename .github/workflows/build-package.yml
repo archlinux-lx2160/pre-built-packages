@@ -1,0 +1,54 @@
+name: Build Arch Linux ARM package
+
+on:
+  workflow_call:
+    inputs:
+      package_repo:
+        description: "Git URL of the package repo containing the PKGBUILD"
+        required: true
+        type: string
+      package_name:
+        description: "Name of the package"
+        required: true
+        type: string
+      release_tag:
+        description: "Release tag to upload the package to"
+        required: false
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Clone package repo
+        run: git clone "${{ inputs.package_repo }}" pkg
+
+      - name: Load Docker image from cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/archlinux-aarch64.tar.zst
+          key: archlinux-aarch64-v1
+
+      - name: Import Docker image
+        run: zstd -d /tmp/archlinux-aarch64.tar.zst --stdout | docker load
+
+      - name: Build package
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/pkg:/pkg" \
+            archlinux-aarch64 \
+            bash -c 'cd /pkg && makepkg -s --noconfirm'
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.package_name }}
+          path: "pkg/*.pkg.tar.*"
+
+      - name: Upload to release
+        if: inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ inputs.release_tag }}" pkg/*.pkg.tar.* \
+            --repo "${{ github.repository }}"

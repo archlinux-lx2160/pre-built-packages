@@ -1,0 +1,78 @@
+name: Build and release packages
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-image:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Cache Docker image
+        uses: actions/cache@v4
+        id: docker-cache
+        with:
+          path: /tmp/archlinux-aarch64.tar.zst
+          key: archlinux-aarch64-v1
+
+      - name: Build Arch Linux ARM Docker image
+        if: steps.docker-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -LO http://os.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz
+          cat <<'DOCKERFILE' > Dockerfile
+          FROM scratch AS base
+          ADD ArchLinuxARM-aarch64-latest.tar.gz /
+          RUN pacman-key --init && pacman-key --populate archlinuxarm
+          RUN sed -i '/^\[options\]/a DisableSandbox' /etc/pacman.conf
+          RUN pacman -Rdd --noconfirm $(pacman -Qq | grep '^linux') 2>/dev/null || true
+          RUN pacman -Syu --noconfirm base-devel git
+          RUN sed -i '0,/if (( EUID == 0 ))/s/if (( EUID == 0 ))/if false/' /usr/bin/makepkg
+          RUN pacman -Scc --noconfirm && rm -rf /var/log/* /tmp/* /var/cache/pacman/pkg/*
+          FROM scratch
+          COPY --from=base / /
+          DOCKERFILE
+          docker build -t archlinux-aarch64 .
+          docker images archlinux-aarch64
+          docker save archlinux-aarch64 | zstd -T0 -o /tmp/archlinux-aarch64.tar.zst
+          ls -lh /tmp/archlinux-aarch64.tar.zst
+
+  create-release:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Create release
+        id: tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="build-$(date +%Y%m%d-%H%M%S)"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          gh release create "$TAG" \
+            --repo "${{ github.repository }}" \
+            --title "Packages $(date +%Y-%m-%d)" \
+            --notes "Automated build from commit ${{ github.sha }}"
+
+  restool:
+    needs: [build-image, create-release]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_repo: https://github.com/archlinux-lx2160/restool
+      package_name: restool
+      release_tag: ${{ needs.create-release.outputs.tag }}
+
+  # Add more packages here:
+  # other-package:
+  #   needs: [build-image, create-release]
+  #   uses: ./.github/workflows/build-package.yml
+  #   with:
+  #     package_repo: https://github.com/archlinux-lx2160/other-package
+  #     package_name: other-package
+  #     release_tag: ${{ needs.create-release.outputs.tag }}
