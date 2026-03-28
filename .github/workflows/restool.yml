@@ -58,6 +58,8 @@ jobs:
       package_name: ${{ matrix.package_name }}
       release_tag: ${{ needs.create-release.outputs.tag }}
       pgp_keys: ${{ matrix.pgp_keys || '' }}
+    secrets:
+      GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
 
   deploy-repo:
     needs: [create-release, build-packages]
@@ -77,12 +79,19 @@ jobs:
           mkdir -p site
           find packages -name '*.pkg.tar.*' -exec cp {} site/ \;
 
+      - name: Write GPG key
+        run: echo "${{ secrets.GPG_PRIVATE_KEY }}" > /tmp/gpg-private.key
+
       - name: Build pacman repo database
         uses: ./.github/actions/archlinux-docker
         with:
           mount: |
             ${{ github.workspace }}/site:/site
-          run: cd /site && repo-add lx2160.db.tar.gz *.pkg.tar.*
+            /tmp/gpg-private.key:/tmp/gpg-private.key:ro
+          run: |
+            gpg --batch --import /tmp/gpg-private.key
+            gpg --export --armor > /site/lx2160.gpg
+            cd /site && repo-add --sign lx2160.db.tar.gz *.pkg.tar.*
 
       - name: Generate redirects and clean up
         env:
@@ -111,11 +120,17 @@ jobs:
           <!DOCTYPE html>
           <html><head><title>LX2160 Pacman Repository</title></head>
           <body><h1>LX2160 Pacman Repository</h1>
+          <h2>Setup</h2>
+          <p>Import the signing key:</p>
+          <pre>curl -s https://archlinux-lx2160.yxio.net/lx2160.gpg | sudo pacman-key --add -
+          sudo pacman-key --lsign-key KEY_ID_PLACEHOLDER</pre>
           <p>Add to <code>/etc/pacman.conf</code>:</p>
           <pre>[lx2160]
-          Server = https://arch-linux-mirror-lx2160.yxio.net</pre>
+          Server = https://archlinux-lx2160.yxio.net</pre>
           <h2>Packages</h2><ul>
           HEADER
+          KEY_ID=$(gpg --show-keys --with-colons site/lx2160.gpg | awk -F: '/^pub/{print $5}' | head -1)
+          sed -i "s/KEY_ID_PLACEHOLDER/$KEY_ID/" index.html
           for f in lx2160.db* lx2160.files*; do
             [ -f "$f" ] && echo "<li><a href=\"$f\">$f</a></li>" >> index.html
           done
