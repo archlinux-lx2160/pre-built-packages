@@ -68,6 +68,14 @@ jobs:
       package_name: restool
       release_tag: ${{ needs.create-release.outputs.tag }}
 
+  linux-aarch64-lx2160:
+    needs: [build-image, create-release]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_repo: https://github.com/archlinux-lx2160/linux-aarch64-lx2160
+      package_name: linux-aarch64-lx2160
+      release_tag: ${{ needs.create-release.outputs.tag }}
+
   zfs-dkms:
     needs: [build-image, create-release]
     uses: ./.github/workflows/build-package.yml
