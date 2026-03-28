@@ -15,6 +15,10 @@ on:
         description: "Release tag to upload the package to"
         required: false
         type: string
+      pgp_keys:
+        description: "Space-separated PGP key IDs to import before building"
+        required: false
+        type: string
 
 jobs:
   build:
@@ -37,7 +41,12 @@ jobs:
           docker run --rm \
             -v "${{ github.workspace }}/pkg:/pkg" \
             archlinux-aarch64 \
-            bash -c 'cd /pkg && makepkg -s --noconfirm'
+            bash -c '
+              if [ -n "${{ inputs.pgp_keys }}" ]; then
+                gpg --recv-keys ${{ inputs.pgp_keys }}
+              fi
+              cd /pkg && makepkg -s --noconfirm
+            '
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4

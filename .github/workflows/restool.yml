@@ -57,7 +57,7 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           gh release create "$TAG" \
             --repo "${{ github.repository }}" \
-            --title "Packages $(date +%Y-%m-%d)" \
+            --title "Packages $(date +%Y-%m-%d\ %H:%M)" \
             --notes "Automated build from commit ${{ github.sha }}"
 
   restool:
@@ -75,3 +75,4 @@ jobs:
       package_repo: https://aur.archlinux.org/zfs-dkms.git
       package_name: zfs-dkms
       release_tag: ${{ needs.create-release.outputs.tag }}
+      pgp_keys: "4F3BA9AB6D1F8D683DC2DFB56AD860EED4598027 C33DF142657ED1F7C328A2960AB9E991C6AF658B"
