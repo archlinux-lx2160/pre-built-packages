@@ -133,7 +133,7 @@ jobs:
           Server = https://archlinux-lx2160.yxio.net</pre>
           <h2>Packages</h2><ul>
           HEADER
-          KEY_ID=$(gpg --show-keys --with-colons site/lx2160.gpg | awk -F: '/^pub/{print $5}' | head -1)
+          KEY_ID=$(gpg --show-keys --with-colons lx2160.gpg | awk -F: '/^pub/{print $5}' | head -1)
           sed -i "s/KEY_ID_PLACEHOLDER/$KEY_ID/" index.html
           for f in lx2160.db* lx2160.files*; do
             [ -f "$f" ] && echo "<li><a href=\"$f\">$f</a></li>" >> index.html
