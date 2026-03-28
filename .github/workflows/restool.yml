@@ -105,6 +105,25 @@ jobs:
             git -C deploy checkout -b cf-pages
             git -C deploy remote add origin "$REPO_URL"
           }
+          # Generate index.html
+          cd site
+          cat > index.html << 'HEADER'
+          <!DOCTYPE html>
+          <html><head><title>LX2160 Pacman Repository</title></head>
+          <body><h1>LX2160 Pacman Repository</h1>
+          <p>Add to <code>/etc/pacman.conf</code>:</p>
+          <pre>[lx2160]
+          Server = https://arch-linux-mirror-lx2160.yxio.net</pre>
+          <h2>Packages</h2><ul>
+          HEADER
+          for f in lx2160.db* lx2160.files*; do
+            [ -f "$f" ] && echo "<li><a href=\"$f\">$f</a></li>" >> index.html
+          done
+          grep -oP '^/\K[^ ]+' _redirects 2>/dev/null | while read pkg; do
+            echo "<li><a href=\"$pkg\">$pkg</a></li>" >> index.html
+          done
+          echo "</ul></body></html>" >> index.html
+          cd ..
           cp -f site/* deploy/
           cd deploy
           git add -A
