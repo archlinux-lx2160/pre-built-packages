@@ -42,8 +42,8 @@ jobs:
             -v "${{ github.workspace }}/pkg:/pkg" \
             archlinux-aarch64 \
             bash -c '
-              git config --global user.email "till@ehrengruber.ch"
-              git config --global user.name "Till Ehrengruber"
+              git config --file /etc/makepkg.d/gitconfig user.email "till@ehrengruber.ch"
+              git config --file /etc/makepkg.d/gitconfig user.name "Till Ehrengruber"
               if [ -n "${{ inputs.pgp_keys }}" ]; then
                 gpg --recv-keys ${{ inputs.pgp_keys }}
               fi
