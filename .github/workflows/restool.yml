@@ -60,27 +60,67 @@ jobs:
             --title "Packages $(date +%Y-%m-%d\ %H:%M)" \
             --notes "Automated build from commit ${{ github.sha }}"
 
-  restool:
+  build-packages:
     needs: [build-image, create-release]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package_repo: https://github.com/archlinux-lx2160/restool
+            package_name: restool
+          #- package_repo: https://github.com/archlinux-lx2160/linux-aarch64-lx2160
+          #  package_name: linux-aarch64-lx2160
+          - package_repo: https://aur.archlinux.org/zfs-dkms.git
+            package_name: zfs-dkms
+            pgp_keys: "4F3BA9AB6D1F8D683DC2DFB56AD860EED4598027 C33DF142657ED1F7C328A2960AB9E991C6AF658B"
     uses: ./.github/workflows/build-package.yml
     with:
-      package_repo: https://github.com/archlinux-lx2160/restool
-      package_name: restool
+      package_repo: ${{ matrix.package_repo }}
+      package_name: ${{ matrix.package_name }}
       release_tag: ${{ needs.create-release.outputs.tag }}
+      pgp_keys: ${{ matrix.pgp_keys || '' }}
 
-  linux-aarch64-lx2160:
-    needs: [build-image, create-release]
-    uses: ./.github/workflows/build-package.yml
-    with:
-      package_repo: https://github.com/archlinux-lx2160/linux-aarch64-lx2160
-      package_name: linux-aarch64-lx2160
-      release_tag: ${{ needs.create-release.outputs.tag }}
+  deploy-repo:
+    needs: [create-release, build-packages]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: packages
 
-  zfs-dkms:
-    needs: [build-image, create-release]
-    uses: ./.github/workflows/build-package.yml
-    with:
-      package_repo: https://aur.archlinux.org/zfs-dkms.git
-      package_name: zfs-dkms
-      release_tag: ${{ needs.create-release.outputs.tag }}
-      pgp_keys: "4F3BA9AB6D1F8D683DC2DFB56AD860EED4598027 C33DF142657ED1F7C328A2960AB9E991C6AF658B"
+      - name: Build pacman repo database
+        run: |
+          mkdir -p site
+          find packages -name '*.pkg.tar.*' -exec cp {} site/ \;
+          cd site
+          repo-add lx2160.db.tar.gz *.pkg.tar.*
+
+      - name: Generate redirects
+        env:
+          RELEASE_TAG: ${{ needs.create-release.outputs.tag }}
+        run: |
+          cd site
+          for pkg in *.pkg.tar.*; do
+            [[ "$pkg" == lx2160.db* ]] && continue
+            [[ "$pkg" == lx2160.files* ]] && continue
+            echo "/$pkg https://github.com/${{ github.repository }}/releases/download/$RELEASE_TAG/$pkg 302" >> _redirects
+          done
+          find . -name '*.pkg.tar.*' ! -name 'lx2160.db*' ! -name 'lx2160.files*' -delete
+          cat _redirects
+
+      - name: Deploy to cf-pages branch
+        run: |
+          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git clone --branch cf-pages --depth 1 "$REPO_URL" deploy || {
+            git init deploy
+            git -C deploy checkout -b cf-pages
+            git -C deploy remote add origin "$REPO_URL"
+          }
+          cp -f site/* deploy/
+          cd deploy
+          git add -A
+          git -c user.name="github-actions" -c user.email="github-actions@github.com" \
+            commit -m "Update pacman repo"
+          git push origin cf-pages
