@@ -68,11 +68,10 @@ jobs:
       package_name: restool
       release_tag: ${{ needs.create-release.outputs.tag }}
 
-  # Add more packages here:
-  # other-package:
-  #   needs: [build-image, create-release]
-  #   uses: ./.github/workflows/build-package.yml
-  #   with:
-  #     package_repo: https://github.com/archlinux-lx2160/other-package
-  #     package_name: other-package
-  #     release_tag: ${{ needs.create-release.outputs.tag }}
+  zfs-dkms:
+    needs: [build-image, create-release]
+    uses: ./.github/workflows/build-package.yml
+    with:
+      package_repo: https://aur.archlinux.org/zfs-dkms.git
+      package_name: zfs-dkms
+      release_tag: ${{ needs.create-release.outputs.tag }}
