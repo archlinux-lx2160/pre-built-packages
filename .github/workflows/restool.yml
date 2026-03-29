@@ -151,8 +151,10 @@ jobs:
           name: incus-image
           path: incus-image
 
-      - name: Write GPG key
-        run: echo "${{ secrets.GPG_PRIVATE_KEY }}" > /tmp/gpg-private.key
+      - name: Initial setup
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" > /tmp/gpg-private.key
+          mkdir -p site packages
 
       - name: Build pacman repo database and export GPG public key
         uses: ./.github/actions/archlinux-docker

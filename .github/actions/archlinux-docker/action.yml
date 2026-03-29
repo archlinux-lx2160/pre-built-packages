@@ -13,12 +13,17 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Get current date
+      id: date
+      shell: bash
+      run: echo "date=$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
+
     - name: Cache Docker image
       uses: actions/cache@v5
       id: docker-cache
       with:
         path: /tmp/archlinux-aarch64.tar.zst
-        key: archlinux-aarch64-v1
+        key: archlinux-aarch64-${{ steps.date.outputs.date }}
 
     - name: Build Arch Linux ARM Docker image
       if: steps.docker-cache.outputs.cache-hit != 'true'
