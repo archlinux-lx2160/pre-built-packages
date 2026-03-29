@@ -1,2 +1,2 @@
-/incus/images/rootfs.tar.gz https://github.com/archlinux-lx2160/pre-built-packages/releases/download/build-20260329-111315/rootfs.tar.gz 302
-/incus/images/metadata.tar.gz https://github.com/archlinux-lx2160/pre-built-packages/releases/download/build-20260329-111315/metadata.tar.gz 302
+/incus/images/rootfs.tar.xz https://github.com/archlinux-lx2160/pre-built-packages/releases/download/build-20260329-113237/rootfs.tar.xz 302
+/incus/images/metadata.tar.xz https://github.com/archlinux-lx2160/pre-built-packages/releases/download/build-20260329-113237/metadata.tar.xz 302

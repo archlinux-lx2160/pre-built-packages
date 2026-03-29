@@ -11,19 +11,19 @@
       "release_title": "current",
       "variant": "default",
       "versions": {
-        "20260329_11:15": {
+        "20260329_11:35": {
           "items": {
-            "root.tar.gz": {
-              "ftype": "root.tar.gz",
-              "sha256": "270fc9036e0d4f5dee270c97fd22a58a343769c1f93c827162ab941211a969d3",
-              "size": 216108182,
-              "path": "images/rootfs.tar.gz"
+            "root.tar.xz": {
+              "ftype": "root.tar.xz",
+              "sha256": "255a594c6ef70867e7072806315e0bc39a65fead3e84224452c8c3001ebf3560",
+              "size": 144735740,
+              "path": "images/rootfs.tar.xz"
             },
-            "incus.tar.gz": {
-              "ftype": "incus.tar.gz",
-              "sha256": "4f902bd16d71332493caa3696b9c942bb2258138d8f11c08b3e9161a01c2f5d0",
-              "size": 472,
-              "path": "images/metadata.tar.gz"
+            "incus.tar.xz": {
+              "ftype": "incus.tar.xz",
+              "sha256": "3a59a6aaf4e86bea4d1d227bb49f597e0bfe40d7cb74633bf968476ea5fe1646",
+              "size": 532,
+              "path": "images/metadata.tar.xz"
             }
           }
         }
