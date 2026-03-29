@@ -4,7 +4,7 @@
       "datatype": "image-downloads",
       "path": "streams/v1/images.json",
       "format": "products:1.0",
-      "products": ["archlinux:aarch64:default"]
+      "products": ["archlinux:current:arm64:default"]
     }
   },
   "format": "index:1.0"

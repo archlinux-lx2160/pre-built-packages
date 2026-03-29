@@ -3,25 +3,26 @@
   "datatype": "image-downloads",
   "format": "products:1.0",
   "products": {
-    "archlinux:aarch64:default": {
-      "aliases": "archlinux/aarch64",
-      "arch": "aarch64",
-      "os": "archlinux",
-      "release": "rolling",
+    "archlinux:current:arm64:default": {
+      "aliases": "archlinux/current/default,archlinux/current,archlinux",
+      "arch": "arm64",
+      "os": "Archlinux",
+      "release": "current",
+      "release_title": "current",
       "variant": "default",
       "versions": {
-        "20260329_10:48": {
+        "20260329_11:15": {
           "items": {
             "root.tar.gz": {
               "ftype": "root.tar.gz",
-              "sha256": "453434ce2bd100af7ecb105ce58740cdbe3da9e4fec9cead0d7bca7b9f66e16c",
-              "size": 216107916,
+              "sha256": "270fc9036e0d4f5dee270c97fd22a58a343769c1f93c827162ab941211a969d3",
+              "size": 216108182,
               "path": "images/rootfs.tar.gz"
             },
             "incus.tar.gz": {
               "ftype": "incus.tar.gz",
-              "sha256": "ac61b0086de19d0339dd30790a09ecf68f1c7ca0f4619db80b56d1069c07e04f",
-              "size": 238,
+              "sha256": "4f902bd16d71332493caa3696b9c942bb2258138d8f11c08b3e9161a01c2f5d0",
+              "size": 472,
               "path": "images/metadata.tar.gz"
             }
           }
