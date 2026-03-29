@@ -119,8 +119,8 @@ jobs:
             ::1              localhost
             EOF
             # Pack rootfs and metadata
-            tar czf /output/rootfs.tar.gz -C /rootfs .
-            tar czf /output/metadata.tar.gz -C /output metadata.yaml templates
+            tar cJf /output/rootfs.tar.xz -C /rootfs .
+            tar cJf /output/metadata.tar.xz -C /output metadata.yaml templates
 
       - name: Upload incus image artifact
         uses: actions/upload-artifact@v5
@@ -145,8 +145,8 @@ jobs:
           RELEASE_TAG: ${{ needs.create-release.outputs.tag }}
         run: |
           gh release upload "$RELEASE_TAG" \
-            incus-image/rootfs.tar.gz \
-            incus-image/metadata.tar.gz \
+            incus-image/rootfs.tar.xz \
+            incus-image/metadata.tar.xz \
             --repo "${{ github.repository }}"
 
   deploy-site:
@@ -203,15 +203,15 @@ jobs:
           done > site/_redirects
 
           # Redirects for incus images
-          echo "/incus/images/rootfs.tar.gz $RELEASE_URL/$RELEASE_TAG/rootfs.tar.gz 302" >> site/_redirects
-          echo "/incus/images/metadata.tar.gz $RELEASE_URL/$RELEASE_TAG/metadata.tar.gz 302" >> site/_redirects
+          echo "/incus/images/rootfs.tar.xz $RELEASE_URL/$RELEASE_TAG/rootfs.tar.xz 302" >> site/_redirects
+          echo "/incus/images/metadata.tar.xz $RELEASE_URL/$RELEASE_TAG/metadata.tar.xz 302" >> site/_redirects
           cat site/_redirects
 
           # Incus simplestreams metadata
-          ROOTFS_SHA256=$(sha256sum incus-image/rootfs.tar.gz | cut -d' ' -f1)
-          ROOTFS_SIZE=$(stat -c%s incus-image/rootfs.tar.gz)
-          META_SHA256=$(sha256sum incus-image/metadata.tar.gz | cut -d' ' -f1)
-          META_SIZE=$(stat -c%s incus-image/metadata.tar.gz)
+          ROOTFS_SHA256=$(sha256sum incus-image/rootfs.tar.xz | cut -d' ' -f1)
+          ROOTFS_SIZE=$(stat -c%s incus-image/rootfs.tar.xz)
+          META_SHA256=$(sha256sum incus-image/metadata.tar.xz | cut -d' ' -f1)
+          META_SIZE=$(stat -c%s incus-image/metadata.tar.xz)
           DATE=$(date +%Y%m%d_%H:%M)
 
           cat > site/incus/streams/v1/index.json << EOF
@@ -244,17 +244,17 @@ jobs:
                 "versions": {
                   "$DATE": {
                     "items": {
-                      "root.tar.gz": {
-                        "ftype": "root.tar.gz",
+                      "root.tar.xz": {
+                        "ftype": "root.tar.xz",
                         "sha256": "$ROOTFS_SHA256",
                         "size": $ROOTFS_SIZE,
-                        "path": "images/rootfs.tar.gz"
+                        "path": "images/rootfs.tar.xz"
                       },
-                      "incus.tar.gz": {
-                        "ftype": "incus.tar.gz",
+                      "incus.tar.xz": {
+                        "ftype": "incus.tar.xz",
                         "sha256": "$META_SHA256",
                         "size": $META_SIZE,
-                        "path": "images/metadata.tar.gz"
+                        "path": "images/metadata.tar.xz"
                       }
                     }
                   }
