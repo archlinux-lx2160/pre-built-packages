@@ -109,8 +109,29 @@ jobs:
           name: incus-image
           path: output/
 
-  deploy-repo:
+  upload-release:
     needs: [create-release, build-incus-image]  # build-packages
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Incus image artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: incus-image
+          path: incus-image
+
+      - name: Upload incus image to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.create-release.outputs.tag }}
+        run: |
+          gh release upload "$RELEASE_TAG" \
+            incus-image/rootfs.tar.gz \
+            incus-image/metadata.tar.gz \
+            --repo "${{ github.repository }}"
+
+  deploy-site:
+    needs: [create-release, upload-release, build-image]  # build-packages
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-24.04-arm
     steps:
@@ -122,6 +143,7 @@ jobs:
         with:
           pattern: pkg-*
           path: packages
+          merge-multiple: true
 
       - name: Download Incus image artifact
         uses: actions/download-artifact@v5
@@ -129,21 +151,46 @@ jobs:
           name: incus-image
           path: incus-image
 
-      - name: Collect packages
-        run: |
-          mkdir -p site
-          find packages -name '*.pkg.tar.*' -exec cp {} site/ \;
+      - name: Write GPG key
+        run: echo "${{ secrets.GPG_PRIVATE_KEY }}" > /tmp/gpg-private.key
 
-      - name: Build Incus simplestreams
+      - name: Build pacman repo database and export GPG public key
+        uses: ./.github/actions/archlinux-docker
+        with:
+          mount: |
+            ${{ github.workspace }}/packages:/packages:ro
+            ${{ github.workspace }}/site:/site
+            /tmp/gpg-private.key:/tmp/gpg-private.key:ro
+          run: |
+            gpg --batch --import /tmp/gpg-private.key
+            mkdir -p /site
+            gpg --export --armor > /site/lx2160.gpg
+            find /packages -maxdepth 1 -name "*.pkg.tar.*" \! -name "*.sig" -exec repo-add --sign /site/lx2160.db.tar.gz {} +
+
+      - name: Build site
+        env:
+          RELEASE_TAG: ${{ needs.create-release.outputs.tag }}
+          RELEASE_URL: https://github.com/${{ github.repository }}/releases/download
         run: |
-          mkdir -p site/incus/streams/v1 site/incus/images
-          cp incus-image/rootfs.tar.gz site/incus/images/
-          cp incus-image/metadata.tar.gz site/incus/images/
-          ROOTFS_SHA256=$(sha256sum site/incus/images/rootfs.tar.gz | cut -d' ' -f1)
-          ROOTFS_SIZE=$(stat -c%s site/incus/images/rootfs.tar.gz)
-          META_SHA256=$(sha256sum site/incus/images/metadata.tar.gz | cut -d' ' -f1)
-          META_SIZE=$(stat -c%s site/incus/images/metadata.tar.gz)
-          FINGERPRINT=$ROOTFS_SHA256
+          mkdir -p site/incus/streams/v1
+          GPG_KEY_ID=$(gpg --show-keys --with-colons site/lx2160.gpg | awk -F: '$1=="fpr"{print $10; exit}')
+
+          # Redirects for packages
+          find packages -maxdepth 1 -name '*.pkg.tar.*' \! -name '*.sig' | while read -r f; do
+            pkg=$(basename "$f")
+            echo "/$pkg $RELEASE_URL/$RELEASE_TAG/$pkg 302"
+          done > site/_redirects
+
+          # Redirects for incus images
+          echo "/incus/images/rootfs.tar.gz $RELEASE_URL/$RELEASE_TAG/rootfs.tar.gz 302" >> site/_redirects
+          echo "/incus/images/metadata.tar.gz $RELEASE_URL/$RELEASE_TAG/metadata.tar.gz 302" >> site/_redirects
+          cat site/_redirects
+
+          # Incus simplestreams metadata
+          ROOTFS_SHA256=$(sha256sum incus-image/rootfs.tar.gz | cut -d' ' -f1)
+          ROOTFS_SIZE=$(stat -c%s incus-image/rootfs.tar.gz)
+          META_SHA256=$(sha256sum incus-image/metadata.tar.gz | cut -d' ' -f1)
+          META_SIZE=$(stat -c%s incus-image/metadata.tar.gz)
           DATE=$(date +%Y%m%d_%H:%M)
 
           cat > site/incus/streams/v1/index.json << EOF
@@ -195,32 +242,30 @@ jobs:
           }
           EOF
 
-      - name: Write GPG key
-        run: echo "${{ secrets.GPG_PRIVATE_KEY }}" > /tmp/gpg-private.key
-
-      - name: Build pacman repo database
-        uses: ./.github/actions/archlinux-docker
-        with:
-          mount: |
-            ${{ github.workspace }}/site:/site
-            /tmp/gpg-private.key:/tmp/gpg-private.key:ro
-          run: |
-            gpg --batch --import /tmp/gpg-private.key
-            gpg --export --armor > /site/lx2160.gpg
-            cd /site && find . -maxdepth 1 -name "*.pkg.tar.*" \! -name "*.sig" -exec repo-add --sign lx2160.db.tar.gz {} +
-
-      - name: Generate redirects and clean up
-        env:
-          RELEASE_TAG: ${{ needs.create-release.outputs.tag }}
-        run: |
-          cd site
-          for pkg in *.pkg.tar.*; do
-            [[ "$pkg" == lx2160.db* ]] && continue
-            [[ "$pkg" == lx2160.files* ]] && continue
-            echo "/$pkg https://github.com/${{ github.repository }}/releases/download/$RELEASE_TAG/$pkg 302" >> _redirects
+          # Generate index.html
+          cat > site/index.html <<EOF
+          <!DOCTYPE html>
+          <html><head><title>LX2160 Pacman Repository</title></head>
+          <body><h1>LX2160 Pacman Repository</h1>
+          <h2>Setup</h2>
+          <p>Import the signing key:</p>
+          <pre>curl -s https://archlinux-lx2160.yxio.net/lx2160.gpg | sudo pacman-key --add -
+          sudo pacman-key --lsign-key $GPG_KEY_ID</pre>
+          <p>Add to <code>/etc/pacman.conf</code>:</p>
+          <pre>[lx2160]
+          Server = https://archlinux-lx2160.yxio.net</pre>
+          <h2>Incus Image</h2>
+          <pre>incus remote add archlinux-aarch64 https://archlinux-lx2160.yxio.net/incus --protocol simplestreams
+          incus launch archlinux-aarch64:archlinux/aarch64 mycontainer</pre>
+          <h2>Packages</h2><ul>
+          EOF
+          for f in site/lx2160.db* site/lx2160.files*; do
+            [ -f "$f" ] && echo "<li><a href=\"$(basename "$f")\">$(basename "$f")</a></li>" >> site/index.html
           done
-          find . -name '*.pkg.tar.*' ! -name 'lx2160.db*' ! -name 'lx2160.files*' -delete
-          cat _redirects
+          grep -oP '^/\K[^ ]+' site/_redirects 2>/dev/null | while read pkg; do
+            echo "<li><a href=\"$pkg\">$pkg</a></li>" >> site/index.html
+          done
+          echo "</ul></body></html>" >> site/index.html
 
       - name: Deploy to cf-pages branch
         run: |
@@ -230,35 +275,7 @@ jobs:
             git -C deploy checkout -b cf-pages
             git -C deploy remote add origin "$REPO_URL"
           }
-          # Generate index.html
-          cd site
-          cat > index.html << 'HEADER'
-          <!DOCTYPE html>
-          <html><head><title>LX2160 Pacman Repository</title></head>
-          <body><h1>LX2160 Pacman Repository</h1>
-          <h2>Setup</h2>
-          <p>Import the signing key:</p>
-          <pre>curl -s https://archlinux-lx2160.yxio.net/lx2160.gpg | sudo pacman-key --add -
-          sudo pacman-key --lsign-key KEY_ID_PLACEHOLDER</pre>
-          <p>Add to <code>/etc/pacman.conf</code>:</p>
-          <pre>[lx2160]
-          Server = https://archlinux-lx2160.yxio.net</pre>
-          <h2>Incus Image</h2>
-          <pre>incus remote add archlinux-aarch64 https://archlinux-lx2160.yxio.net/incus --protocol simplestreams
-          incus launch archlinux-aarch64:archlinux/aarch64 mycontainer</pre>
-          <h2>Packages</h2><ul>
-          HEADER
-          KEY_ID=$(gpg --show-keys --with-colons lx2160.gpg | awk -F: '$1=="fpr"{print $10; exit}')
-          sed -i "s/KEY_ID_PLACEHOLDER/$KEY_ID/" index.html
-          for f in lx2160.db* lx2160.files*; do
-            [ -f "$f" ] && echo "<li><a href=\"$f\">$f</a></li>" >> index.html
-          done
-          grep -oP '^/\K[^ ]+' _redirects 2>/dev/null | while read pkg; do
-            echo "<li><a href=\"$pkg\">$pkg</a></li>" >> index.html
-          done
-          echo "</ul></body></html>" >> index.html
-          cd ..
-          cp -f site/* deploy/
+          cp -rf site/* deploy/
           cd deploy
           git add -A
           git -c user.name="github-actions" -c user.email="github-actions@github.com" \
