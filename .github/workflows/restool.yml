@@ -89,19 +89,38 @@ jobs:
             ln -sf /usr/share/zoneinfo/UTC /rootfs/etc/localtime
             systemctl --root=/rootfs enable systemd-networkd systemd-resolved sshd
             # Create metadata
-            cat > /output/metadata.yaml << 'EOF'
+            SERIAL=$(date +%Y%m%d_%H:%M)
+            cat > /output/metadata.yaml << EOF
             architecture: aarch64
             creation_date: $(date +%s)
             properties:
-              description: Arch Linux ARM (aarch64)
+              architecture: aarch64
+              description: Archlinux aarch64 ($SERIAL)
+              name: archlinux--aarch64-default-$SERIAL
               os: archlinux
-              release: rolling
+              release: ""
+              serial: "$SERIAL"
               variant: default
+            templates:
+              /etc/hosts:
+                when:
+                - create
+                - copy
+                create_only: false
+                template: hosts.tpl
+                properties: {}
             EOF
-            sed -i "s/\$(date +%s)/$(date +%s)/" /output/metadata.yaml
+            mkdir -p /output/templates
+            cat > /output/templates/hosts.tpl << 'EOF'
+            127.0.1.1    {{ container.name }}
+            # Static table lookup for hostnames.
+            # See hosts(5) for details.
+            127.0.0.1        localhost
+            ::1              localhost
+            EOF
             # Pack rootfs and metadata
             tar czf /output/rootfs.tar.gz -C /rootfs .
-            tar czf /output/metadata.tar.gz -C /output metadata.yaml
+            tar czf /output/metadata.tar.gz -C /output metadata.yaml templates
 
       - name: Upload incus image artifact
         uses: actions/upload-artifact@v5
@@ -202,7 +221,7 @@ jobs:
                 "datatype": "image-downloads",
                 "path": "streams/v1/images.json",
                 "format": "products:1.0",
-                "products": ["archlinux:aarch64:default"]
+                "products": ["archlinux:current:arm64:default"]
               }
             },
             "format": "index:1.0"
@@ -215,11 +234,12 @@ jobs:
             "datatype": "image-downloads",
             "format": "products:1.0",
             "products": {
-              "archlinux:aarch64:default": {
-                "aliases": "archlinux/aarch64",
-                "arch": "aarch64",
-                "os": "archlinux",
-                "release": "rolling",
+              "archlinux:current:arm64:default": {
+                "aliases": "archlinux/current/default,archlinux/current,archlinux",
+                "arch": "arm64",
+                "os": "Archlinux",
+                "release": "current",
+                "release_title": "current",
                 "variant": "default",
                 "versions": {
                   "$DATE": {
@@ -258,7 +278,7 @@ jobs:
           Server = https://archlinux-lx2160.yxio.net</pre>
           <h2>Incus Image</h2>
           <pre>incus remote add archlinux-aarch64 https://archlinux-lx2160.yxio.net/incus --protocol simplestreams
-          incus launch archlinux-aarch64:archlinux/aarch64 mycontainer</pre>
+          incus launch archlinux-aarch64:archlinux mycontainer</pre>
           <h2>Packages</h2><ul>
           EOF
           for f in site/lx2160.db* site/lx2160.files*; do
