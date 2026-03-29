@@ -82,7 +82,7 @@ jobs:
           mount: |
             ${{ github.workspace }}/output:/output
           run: |
-            mkdir -p /rootfs
+            mkdir -p /rootfs/var/lib/pacman /rootfs/etc
             pacman -r /rootfs -Sy --noconfirm base openssh
             # Configure the image
             echo "archlinux" > /rootfs/etc/hostname
