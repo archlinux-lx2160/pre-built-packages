@@ -51,6 +51,7 @@ runs:
       shell: bash
       run: |
         cat > /tmp/archlinux-docker-run.sh << 'ARCHLINUX_DOCKER_SCRIPT_EOF'
+        set -euo pipefail
         ${{ inputs.run }}
         ARCHLINUX_DOCKER_SCRIPT_EOF
         chmod +x /tmp/archlinux-docker-run.sh
