@@ -47,6 +47,14 @@ runs:
       shell: bash
       run: zstd -d /tmp/archlinux-aarch64.tar.zst --stdout | docker load
 
+    - name: Write script
+      shell: bash
+      run: |
+        cat > /tmp/archlinux-docker-run.sh << 'ARCHLINUX_DOCKER_SCRIPT_EOF'
+        ${{ inputs.run }}
+        ARCHLINUX_DOCKER_SCRIPT_EOF
+        chmod +x /tmp/archlinux-docker-run.sh
+
     - name: Run in container
       shell: bash
       run: |
@@ -56,5 +64,6 @@ runs:
           VOLUME_ARGS="$VOLUME_ARGS -v $line"
         done <<< "${{ inputs.mount }}"
         docker run --rm $VOLUME_ARGS \
+          -v /tmp/archlinux-docker-run.sh:/tmp/archlinux-docker-run.sh:ro \
           archlinux-aarch64 \
-          bash -c '${{ inputs.run }}'
+          bash /tmp/archlinux-docker-run.sh

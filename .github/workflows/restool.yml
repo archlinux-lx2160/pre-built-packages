@@ -117,10 +117,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Download all package artifacts
+      - name: Download package artifacts
         uses: actions/download-artifact@v5
         with:
+          pattern: pkg-*
           path: packages
+
+      - name: Download Incus image artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: incus-image
+          path: incus-image
 
       - name: Collect packages
         run: |
@@ -130,9 +137,8 @@ jobs:
       - name: Build Incus simplestreams
         run: |
           mkdir -p site/incus/streams/v1 site/incus/images
-          find packages/
-          cp packages/incus-image/rootfs.tar.gz site/incus/images/
-          cp packages/incus-image/metadata.tar.gz site/incus/images/
+          cp incus-image/rootfs.tar.gz site/incus/images/
+          cp incus-image/metadata.tar.gz site/incus/images/
           ROOTFS_SHA256=$(sha256sum site/incus/images/rootfs.tar.gz | cut -d' ' -f1)
           ROOTFS_SIZE=$(stat -c%s site/incus/images/rootfs.tar.gz)
           META_SHA256=$(sha256sum site/incus/images/metadata.tar.gz | cut -d' ' -f1)
