@@ -101,15 +101,13 @@ jobs:
             sed -i "s/\$(date +%s)/$(date +%s)/" /output/metadata.yaml
             # Pack rootfs and metadata
             tar czf /output/rootfs.tar.gz -C /rootfs .
-            cd /output && tar czf metadata.tar.gz metadata.yaml
+            tar czf /output/metadata.tar.gz -C /output metadata.yaml
 
       - name: Upload incus image artifact
         uses: actions/upload-artifact@v5
         with:
           name: incus-image
-          path: |
-            output/rootfs.tar.gz
-            output/metadata.tar.gz
+          path: output/
 
   deploy-repo:
     needs: [create-release, build-incus-image]  # build-packages
