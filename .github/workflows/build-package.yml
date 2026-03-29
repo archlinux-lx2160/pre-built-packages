@@ -64,7 +64,7 @@ jobs:
       - name: Upload package artifact
         uses: actions/upload-artifact@v5
         with:
-          name: ${{ inputs.package_name }}
+          name: pkg-${{ inputs.package_name }}
           path: "pkg/*.pkg.tar.*"
 
       - name: Upload to release
