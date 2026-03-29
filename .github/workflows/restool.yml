@@ -130,7 +130,7 @@ jobs:
       - name: Build Incus simplestreams
         run: |
           mkdir -p site/incus/streams/v1 site/incus/images
-          find packages/incus-image -type f
+          find packages/
           cp packages/incus-image/rootfs.tar.gz site/incus/images/
           cp packages/incus-image/metadata.tar.gz site/incus/images/
           ROOTFS_SHA256=$(sha256sum site/incus/images/rootfs.tar.gz | cut -d' ' -f1)
