@@ -1,3 +1,7 @@
-/restool-6.6.52-0-aarch64.pkg.tar.xz https://github.com/archlinux-lx2160/pre-built-packages/releases/download/build-20260330-080941/restool-6.6.52-0-aarch64.pkg.tar.xz 302
-/incus/images/rootfs.tar.xz https://github.com/archlinux-lx2160/pre-built-packages/releases/download/build-20260330-080941/rootfs.tar.xz 302
-/incus/images/metadata.tar.xz https://github.com/archlinux-lx2160/pre-built-packages/releases/download/build-20260330-080941/metadata.tar.xz 302
+/linux-aarch64-lx2160-6.6.52-2-aarch64.pkg.tar.xz https://github.com/archlinux-lx2160/pre-built-packages/releases/download/build-20260330-081722/linux-aarch64-lx2160-6.6.52-2-aarch64.pkg.tar.xz 302
+/zfs-dkms-2.4.1-1-any.pkg.tar.xz https://github.com/archlinux-lx2160/pre-built-packages/releases/download/build-20260330-081722/zfs-dkms-2.4.1-1-any.pkg.tar.xz 302
+/restool-6.6.52-0-aarch64.pkg.tar.xz https://github.com/archlinux-lx2160/pre-built-packages/releases/download/build-20260330-081722/restool-6.6.52-0-aarch64.pkg.tar.xz 302
+/linux-aarch64-lx2160-headers-6.6.52-2-aarch64.pkg.tar.xz https://github.com/archlinux-lx2160/pre-built-packages/releases/download/build-20260330-081722/linux-aarch64-lx2160-headers-6.6.52-2-aarch64.pkg.tar.xz 302
+/zfs-utils-2.4.1-1-aarch64.pkg.tar.xz https://github.com/archlinux-lx2160/pre-built-packages/releases/download/build-20260330-081722/zfs-utils-2.4.1-1-aarch64.pkg.tar.xz 302
+/incus/images/rootfs.tar.xz https://github.com/archlinux-lx2160/pre-built-packages/releases/download/build-20260330-081722/rootfs.tar.xz 302
+/incus/images/metadata.tar.xz https://github.com/archlinux-lx2160/pre-built-packages/releases/download/build-20260330-081722/metadata.tar.xz 302
