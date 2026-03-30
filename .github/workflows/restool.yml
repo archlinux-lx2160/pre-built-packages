@@ -44,7 +44,6 @@ jobs:
             --notes "Automated build from commit ${{ github.sha }}"
 
   build-packages:
-    if: false
     needs: [build-image, create-release]
     strategy:
       fail-fast: false
@@ -52,8 +51,8 @@ jobs:
         include:
           - package_repo: https://github.com/archlinux-lx2160/restool
             package_name: restool
-          #- package_repo: https://github.com/archlinux-lx2160/linux-aarch64-lx2160
-          #  package_name: linux-aarch64-lx2160
+          - package_repo: https://github.com/archlinux-lx2160/linux-aarch64-lx2160
+            package_name: linux-aarch64-lx2160
           - package_repo: https://aur.archlinux.org/zfs-dkms.git
             package_name: zfs-dkms
             pgp_keys: "4F3BA9AB6D1F8D683DC2DFB56AD860EED4598027 C33DF142657ED1F7C328A2960AB9E991C6AF658B"
