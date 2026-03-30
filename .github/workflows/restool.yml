@@ -212,6 +212,7 @@ jobs:
           ROOTFS_SIZE=$(stat -c%s incus-image/rootfs.tar.xz)
           META_SHA256=$(sha256sum incus-image/metadata.tar.xz | cut -d' ' -f1)
           META_SIZE=$(stat -c%s incus-image/metadata.tar.xz)
+          COMBINED_SHA256=$(cat incus-image/metadata.tar.xz incus-image/rootfs.tar.xz | sha256sum | cut -d' ' -f1)
           DATE=$(date +%Y%m%d_%H:%M)
 
           cat > site/incus/streams/v1/index.json << EOF
@@ -248,13 +249,17 @@ jobs:
                         "ftype": "root.tar.xz",
                         "sha256": "$ROOTFS_SHA256",
                         "size": $ROOTFS_SIZE,
-                        "path": "images/rootfs.tar.xz"
+                        "path": "images/rootfs.tar.xz",
+                        "combined_sha256": "$COMBINED_SHA256",
+                        "combined_rootxz_sha256": "$COMBINED_SHA256"
                       },
                       "incus.tar.xz": {
                         "ftype": "incus.tar.xz",
                         "sha256": "$META_SHA256",
                         "size": $META_SIZE,
-                        "path": "images/metadata.tar.xz"
+                        "path": "images/metadata.tar.xz",
+                        "combined_sha256": "$COMBINED_SHA256",
+                        "combined_rootxz_sha256": "$COMBINED_SHA256"
                       }
                     }
                   }
