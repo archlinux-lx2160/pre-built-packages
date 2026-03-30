@@ -149,7 +149,7 @@ jobs:
             --repo "${{ github.repository }}"
 
   deploy-site:
-    needs: [create-release, upload-release, build-image]  # build-packages
+    needs: [create-release, upload-release, build-image, build-packages]
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-24.04-arm
     steps:
