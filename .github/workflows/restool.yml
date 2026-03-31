@@ -196,7 +196,7 @@ jobs:
           GPG_KEY_ID=$(gpg --show-keys --with-colons site/lx2160.gpg | awk -F: '$1=="fpr"{print $10; exit}')
 
           # Redirects for packages
-          find packages -maxdepth 1 -name '*.pkg.tar.*' \! -name '*.sig' | while read -r f; do
+          find packages -maxdepth 1 -name '*.pkg.tar.*' | while read -r f; do
             pkg=$(basename "$f")
             echo "/$pkg $RELEASE_URL/$RELEASE_TAG/$pkg 302"
           done > site/_redirects
