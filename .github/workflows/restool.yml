@@ -53,7 +53,7 @@ jobs:
             package_name: restool
           - package_repo: https://github.com/archlinux-lx2160/linux-aarch64-lx2160
             package_name: linux-aarch64-lx2160
-          - package_repo: https://gitlab.archlinux.org/archlinux/packaging/packages/edk2.git
+          - package_repo: https://github.com/archlinux-lx2160/edk2
             package_name: edk2
           - package_repo: https://aur.archlinux.org/zfs-dkms.git
             package_name: zfs-dkms
