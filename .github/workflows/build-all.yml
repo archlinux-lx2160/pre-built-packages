@@ -86,7 +86,7 @@ jobs:
             ${{ github.workspace }}/output:/output
           run: |
             mkdir -p /rootfs/var/lib/pacman /rootfs/etc
-            pacman -r /rootfs -Sy --noconfirm base openssh
+            pacman -r /rootfs -Sy --noconfirm base openssh dhclient
             # Configure the image
             echo "archlinux" > /rootfs/etc/hostname
             ln -sf /usr/share/zoneinfo/UTC /rootfs/etc/localtime
