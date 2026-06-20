@@ -2,12 +2,14 @@
 
 Pre-built Arch Linux ARM packages and container images for NXP LX2160A based boards.
 
-Packages: `restool`, `linux-aarch64-lx2160`, `zfs-dkms`, `zfs-utils`
+Packages: `restool`, `linux-aarch64-lx2160`, `edk2`, `sync-boot-partition`, `zfs-dkms`, `zfs-utils`
 
 ## Pacman Repository
 
+Packages are published as assets on the GitHub `latest` release.
+
 ```bash
-curl -s https://archlinux-lx2160.yxio.net/lx2160.gpg | sudo pacman-key --add -
+curl -sL https://github.com/archlinux-lx2160/pre-built-packages/releases/download/latest/lx2160.gpg | sudo pacman-key --add -
 sudo pacman-key --lsign-key 612143A8503BD71E08A6976768E73A1FE6A4783B
 ```
 
@@ -15,7 +17,7 @@ Add to `/etc/pacman.conf`:
 
 ```ini
 [lx2160]
-Server = https://archlinux-lx2160.yxio.net
+Server = https://github.com/archlinux-lx2160/pre-built-packages/releases/download/latest
 ```
 
 ## Incus Image

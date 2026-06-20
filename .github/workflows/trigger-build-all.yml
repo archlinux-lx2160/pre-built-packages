@@ -5,6 +5,8 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  schedule:
+    - cron: "0 0 * * 0"
   workflow_dispatch:
 
 concurrency:
@@ -15,72 +17,23 @@ permissions:
   contents: write
 
 jobs:
-  build-image:
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-      - name: Build and cache Docker image
-        uses: ./.github/actions/archlinux-docker
-        with:
-          run: "true"
-
-  create-release:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.tag.outputs.tag }}
-    steps:
-      - name: Create release
-        id: tag
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="build-$(date +%Y%m%d-%H%M%S)"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          gh release create "$TAG" \
-            --repo "${{ github.repository }}" \
-            --title "Packages $(date +%Y-%m-%d\ %H:%M)" \
-            --notes "Automated build from commit ${{ github.sha }}"
-
-  build-packages:
-    needs: [build-image, create-release]
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - package_repo: https://github.com/archlinux-lx2160/restool
-            package_name: restool
-          - package_repo: https://github.com/archlinux-lx2160/linux-aarch64-lx2160
-            package_name: linux-aarch64-lx2160
-          - package_repo: https://github.com/archlinux-lx2160/edk2
-            package_name: edk2
-          - package_repo: https://github.com/tehrengruber/sync-boot-partition
-            package_name: sync-boot-partition
-          - package_repo: https://aur.archlinux.org/zfs-dkms.git
-            package_name: zfs-dkms
-            pgp_keys: "4F3BA9AB6D1F8D683DC2DFB56AD860EED4598027 C33DF142657ED1F7C328A2960AB9E991C6AF658B"
-          - package_repo: https://aur.archlinux.org/zfs-utils.git
-            package_name: zfs-utils
-            pgp_keys: "4F3BA9AB6D1F8D683DC2DFB56AD860EED4598027 C33DF142657ED1F7C328A2960AB9E991C6AF658B"
-    uses: ./.github/workflows/build-package.yml
+  build:
+    # Reusable package build/publish pipeline maintained upstream. It reads the
+    # package list from .github/packages.yml in THIS repo, builds them, and
+    # publishes the repo DB + .gpg + packages to a GitHub release (pending -> latest).
+    uses: tehrengruber/arch-pre-built-packages/.github/workflows/build-all.yml@v0.1
     with:
-      package_repo: ${{ matrix.package_repo }}
-      package_name: ${{ matrix.package_name }}
-      release_tag: ${{ needs.create-release.outputs.tag }}
-      pgp_keys: ${{ matrix.pgp_keys || '' }}
+      runner: ubuntu-24.04-arm
+      repo_db_name: lx2160
     secrets:
+      # Explicit (not `inherit`): caller and reusable workflow are different owners.
       GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
 
   build-incus-image:
-    needs: [build-image]
     runs-on: ubuntu-24.04-arm
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
       - name: Build Arch Linux ARM rootfs
-        uses: ./.github/actions/archlinux-docker
+        uses: tehrengruber/arch-pre-built-packages/.github/actions/archlinux-docker@v0.1
         with:
           mount: |
             ${{ github.workspace }}/output:/output
@@ -131,8 +84,8 @@ jobs:
           name: incus-image
           path: output/
 
-  upload-release:
-    needs: [create-release, build-incus-image]  # build-packages
+  deploy-incus:
+    needs: [build, build-incus-image]
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
@@ -142,75 +95,45 @@ jobs:
           name: incus-image
           path: incus-image
 
-      - name: Upload incus image to release
+      - name: Attach Incus image to pending release
+        id: attach
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ needs.create-release.outputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
         run: |
-          gh release upload "$RELEASE_TAG" \
+          # The reusable build runs in this same workflow run, so its pending
+          # release is tagged pending-<final>-<run_id>. Upload the incus binaries
+          # there so `promote-release` carries them into `latest` alongside packages.
+          TEMP_TAG=$(gh release list --repo "$REPO" --json tagName \
+            --jq ".[] | select(.tagName | startswith(\"pending-\")) | select(.tagName | endswith(\"-$RUN_ID\")) | .tagName" \
+            | head -1)
+          if [ -z "$TEMP_TAG" ]; then
+            echo "No pending release for run $RUN_ID — skipping incus deploy"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Uploading incus image to $TEMP_TAG"
+          gh release upload "$TEMP_TAG" \
             incus-image/rootfs.tar.xz \
             incus-image/metadata.tar.xz \
-            --repo "${{ github.repository }}"
+            --repo "$REPO" --clobber
 
-  deploy-site:
-    needs: [create-release, upload-release, build-image, build-packages]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Download package artifacts
-        uses: actions/download-artifact@v5
-        with:
-          pattern: pkg-*
-          path: packages
-          merge-multiple: true
-
-      - name: Download Incus image artifact
-        uses: actions/download-artifact@v5
-        with:
-          name: incus-image
-          path: incus-image
-
-      - name: Initial setup
-        run: |
-          echo "${{ secrets.GPG_PRIVATE_KEY }}" > /tmp/gpg-private.key
-          mkdir -p site packages
-
-      - name: Build pacman repo database and export GPG public key
-        uses: ./.github/actions/archlinux-docker
-        with:
-          mount: |
-            ${{ github.workspace }}/packages:/packages:ro
-            ${{ github.workspace }}/site:/site
-            /tmp/gpg-private.key:/tmp/gpg-private.key:ro
-          run: |
-            gpg --batch --import /tmp/gpg-private.key
-            mkdir -p /site
-            gpg --export --armor > /site/lx2160.gpg
-            find /packages -maxdepth 1 -name "*.pkg.tar.*" \! -name "*.sig" -exec repo-add --sign /site/lx2160.db.tar.gz {} +
-
-      - name: Build site
+      - name: Build simplestreams site
+        if: steps.attach.outputs.skip != 'true'
         env:
-          RELEASE_TAG: ${{ needs.create-release.outputs.tag }}
           RELEASE_URL: https://github.com/${{ github.repository }}/releases/download
         run: |
           mkdir -p site/incus/streams/v1
-          GPG_KEY_ID=$(gpg --show-keys --with-colons site/lx2160.gpg | awk -F: '$1=="fpr"{print $10; exit}')
 
-          # Redirects for packages
-          find packages -maxdepth 1 -name '*.pkg.tar.*' | while read -r f; do
-            pkg=$(basename "$f")
-            echo "/$pkg $RELEASE_URL/$RELEASE_TAG/$pkg 302"
-          done > site/_redirects
-
-          # Redirects for incus images
-          echo "/incus/images/rootfs.tar.xz $RELEASE_URL/$RELEASE_TAG/rootfs.tar.xz 302" >> site/_redirects
-          echo "/incus/images/metadata.tar.xz $RELEASE_URL/$RELEASE_TAG/metadata.tar.xz 302" >> site/_redirects
+          # Cloudflare serves only the incus simplestreams metadata; the image
+          # binaries are redirected to the stable `latest` GitHub release.
+          cat > site/_redirects << EOF
+          /incus/images/rootfs.tar.xz $RELEASE_URL/latest/rootfs.tar.xz 302
+          /incus/images/metadata.tar.xz $RELEASE_URL/latest/metadata.tar.xz 302
+          EOF
           cat site/_redirects
 
-          # Incus simplestreams metadata
           ROOTFS_SHA256=$(sha256sum incus-image/rootfs.tar.xz | cut -d' ' -f1)
           ROOTFS_SIZE=$(stat -c%s incus-image/rootfs.tar.xz)
           META_SHA256=$(sha256sum incus-image/metadata.tar.xz | cut -d' ' -f1)
@@ -272,42 +195,37 @@ jobs:
           }
           EOF
 
-          # Generate index.html
-          cat > site/index.html <<EOF
+          # Minimal landing page (packages now live on GitHub releases)
+          cat > site/index.html << EOF
           <!DOCTYPE html>
-          <html><head><title>LX2160 Pacman Repository</title></head>
-          <body><h1>LX2160 Pacman Repository</h1>
-          <h2>Setup</h2>
-          <p>Import the signing key:</p>
-          <pre>curl -s https://archlinux-lx2160.yxio.net/lx2160.gpg | sudo pacman-key --add -
-          sudo pacman-key --lsign-key $GPG_KEY_ID</pre>
-          <p>Add to <code>/etc/pacman.conf</code>:</p>
+          <html><head><title>LX2160 Arch Linux ARM</title></head>
+          <body><h1>LX2160 Arch Linux ARM</h1>
+          <h2>Pacman Repository</h2>
+          <p>Packages are published as GitHub release assets. Add to <code>/etc/pacman.conf</code>:</p>
           <pre>[lx2160]
-          Server = https://archlinux-lx2160.yxio.net</pre>
+          Server = $RELEASE_URL/latest</pre>
           <h2>Incus Image</h2>
           <pre>incus remote add archlinux-aarch64 https://archlinux-lx2160.yxio.net/incus --protocol simplestreams
           incus launch archlinux-aarch64:archlinux mycontainer</pre>
-          <h2>Packages</h2><ul>
+          </body></html>
           EOF
-          for f in site/lx2160.db* site/lx2160.files*; do
-            [ -f "$f" ] && echo "<li><a href=\"$(basename "$f")\">$(basename "$f")</a></li>" >> site/index.html
-          done
-          grep -oP '^/\K[^ ]+' site/_redirects 2>/dev/null | while read pkg; do
-            echo "<li><a href=\"$pkg\">$pkg</a></li>" >> site/index.html
-          done
-          echo "</ul></body></html>" >> site/index.html
 
       - name: Deploy to cf-pages branch
+        if: steps.attach.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          REPO_URL="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           git clone --branch cf-pages --depth 1 "$REPO_URL" deploy || {
             git init deploy
             git -C deploy checkout -b cf-pages
             git -C deploy remote add origin "$REPO_URL"
           }
+          # Wipe stale content (old package DBs/redirects) — Cloudflare is incus-only now
+          find deploy -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           cp -rf site/* deploy/
           cd deploy
           git add -A
           git -c user.name="github-actions" -c user.email="github-actions@github.com" \
-            commit -m "Update pacman repo"
+            commit -m "Update incus simplestreams" --allow-empty
           git push origin cf-pages
