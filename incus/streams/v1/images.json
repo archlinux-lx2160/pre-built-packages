@@ -11,23 +11,23 @@
       "release_title": "current",
       "variant": "default",
       "versions": {
-        "20260620_03:17": {
+        "20260621_02:49": {
           "items": {
             "root.tar.xz": {
               "ftype": "root.tar.xz",
-              "sha256": "c84cd6c2d011dcf498a373ddc60ee8da27fbc5f478fa8bc10439ed17df4c9a3e",
-              "size": 146493248,
+              "sha256": "0493b37f8060f8d5b2dd1f5a164891d9adf99bce97f1ae0bc438d47a663d88e5",
+              "size": 146501864,
               "path": "images/rootfs.tar.xz",
-              "combined_sha256": "3e2f8b71cdef6cc69c4535cc91e035b3dafb76031ed5d806b23b68e077b3f879",
-              "combined_rootxz_sha256": "3e2f8b71cdef6cc69c4535cc91e035b3dafb76031ed5d806b23b68e077b3f879"
+              "combined_sha256": "6e5c69edae5f0001b830d33d1be0fe5b3ef45282d82aebf1f613639572908fba",
+              "combined_rootxz_sha256": "6e5c69edae5f0001b830d33d1be0fe5b3ef45282d82aebf1f613639572908fba"
             },
             "incus.tar.xz": {
               "ftype": "incus.tar.xz",
-              "sha256": "ef68903a17fb827fc6692969bd152c52a11051088bda8961010df0c3d7c03cc5",
+              "sha256": "900f9a150b778d984e67e51e63ecfaeae454f6d37ec5a3ec92450892ba5a823f",
               "size": 532,
               "path": "images/metadata.tar.xz",
-              "combined_sha256": "3e2f8b71cdef6cc69c4535cc91e035b3dafb76031ed5d806b23b68e077b3f879",
-              "combined_rootxz_sha256": "3e2f8b71cdef6cc69c4535cc91e035b3dafb76031ed5d806b23b68e077b3f879"
+              "combined_sha256": "6e5c69edae5f0001b830d33d1be0fe5b3ef45282d82aebf1f613639572908fba",
+              "combined_rootxz_sha256": "6e5c69edae5f0001b830d33d1be0fe5b3ef45282d82aebf1f613639572908fba"
             }
           }
         }
