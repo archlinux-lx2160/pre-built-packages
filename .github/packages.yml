@@ -14,3 +14,7 @@
   pgp_keys: "4F3BA9AB6D1F8D683DC2DFB56AD860EED4598027 C33DF142657ED1F7C328A2960AB9E991C6AF658B"
 - package_repo: https://aur.archlinux.org/grafana-bin.git
   package_name: grafana-bin
+- package_repo: https://github.com/tehrengruber/victoriametrics-pkg
+  package_name: victoriametrics
+- package_repo: https://github.com/tehrengruber/vmutils-pkg
+  package_name: vmutils
