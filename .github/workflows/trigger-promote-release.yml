@@ -15,4 +15,4 @@ permissions:
 
 jobs:
   promote:
-    uses: tehrengruber/arch-pre-built-packages/.github/workflows/promote-release.yml@v0.1
+    uses: tehrengruber/arch-pre-built-packages/.github/workflows/promote-release.yml@v0.4

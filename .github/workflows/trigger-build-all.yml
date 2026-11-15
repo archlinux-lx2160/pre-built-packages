@@ -21,9 +21,10 @@ jobs:
     # Reusable package build/publish pipeline maintained upstream. It reads the
     # package list from .github/packages.yml in THIS repo, builds them, and
     # publishes the repo DB + .gpg + packages to a GitHub release (pending -> latest).
-    uses: tehrengruber/arch-pre-built-packages/.github/workflows/build-all.yml@v0.1
+    uses: tehrengruber/arch-pre-built-packages/.github/workflows/build-all.yml@v0.4
     with:
-      runner: ubuntu-24.04-arm
+      default_arch: aarch64
+      runner_aarch64: ubuntu-24.04-arm
       repo_db_name: lx2160
     secrets:
       # Explicit (not `inherit`): caller and reusable workflow are different owners.

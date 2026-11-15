@@ -10,4 +10,4 @@ permissions:
 
 jobs:
   cleanup:
-    uses: tehrengruber/arch-pre-built-packages/.github/workflows/cleanup-pending.yml@v0.1
+    uses: tehrengruber/arch-pre-built-packages/.github/workflows/cleanup-pending.yml@v0.4
